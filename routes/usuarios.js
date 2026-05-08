@@ -138,7 +138,33 @@ router.post('/slot', async (req, res) => {
     }
 });
 
-// 4. OBTENER DATOS (GET)
+// 4 CARGAR CREDITO
+router.post('/cargar-credito', async (req, res) => {
+    const { usuario, monto } = req.body;
+    const montoNum = Number(monto);
+
+    if (!usuario || isNaN(montoNum) || montoNum <= 0) {
+        return res.status(400).json({ error: "Datos inválidos" });
+    }
+
+    const db = admin.firestore();
+    const userRef = db.collection('usuarios').doc(usuario);
+
+    try {
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(userRef);
+            if (!doc.exists) throw new Error("Usuario no encontrado");
+
+            const saldoActual = Number(doc.data().saldo) || 0;
+            t.update(userRef, { saldo: saldoActual + montoNum });
+        });
+        res.json({ mensaje: `Carga exitosa de $${montoNum}`, nuevoSaldo: "actualizado" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 5. OBTENER DATOS (GET)
 router.get('/:username', async (req, res) => {
     try {
         const db = admin.firestore();
